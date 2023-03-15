@@ -69,34 +69,25 @@ void generateTABCOP(fstream &asmFile, fstream &tbcFile, const map<string,map<str
             symbol = match[2].str();
             value = match[3].str();
 
-            for(auto it : instructions){
-                if(mnemonic == it.first){
-                    for(auto it2 : it.second){
-                        if(it2.first == "EXTENDED"){
-                            MD = "EXT";
-                            COP = it2.second;
-                            break;
-                        }
-                        else if(it2.first == "DIRECT"){
-                            MD = "DIR";
-                            COP = it2.second;
-                            break;
-                        }
-                        else{
-                            MD = "INM";
-                            COP = it2.second;
-                            break;
-                        }
-
-                    }
-                }
+            if(value.length() > 2){
+                MD = "EXT";
+                COP = instructions[mnemonic]["EXTENDED"];
             }
+            else if(symbol.empty()){
+                MD = "DIR";
+                COP = instructions[mnemonic]["DIRECT"];
+            }
+            else if(symbol == "#"){
+                MD = "INM";
+                COP = instructions[mnemonic]["INMEDIATE"];
+            }
+
             LI = COP.length() / 2;
 
             tbcFile << mnemonic << "\t" << MD << "\t\t" << COP << "\t" << LI << endl;
 
         }
-        
-        
+             
     }
 }
+
