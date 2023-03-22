@@ -5,8 +5,12 @@
 #include <map>
 #include <iomanip>
 #include <vector>
+#include <sstream>
 
 using namespace std;
+
+
+
 
 void generateTABCOP(fstream&, fstream&, const map<string,map<string,string>>&);
 void generateLST(fstream&, fstream&, fstream&, const map<string,map<string,string>>&);
@@ -25,14 +29,14 @@ int main(){
     instructions["ABA"]["INHERENT"] = "1806";
 
     //ADCA Instruction
-    instructions["ADCA"]["INMEDIATE"] = "89ii";
-    instructions["ADCA"]["DIRECT"] = "99dd";
-    instructions["ADCA"]["EXTENDED"] = "B9hhll";
+    instructions["ADCA"]["INMEDIATE"] = "89  ";
+    instructions["ADCA"]["DIRECT"] = "99  ";
+    instructions["ADCA"]["EXTENDED"] = "B9    ";
 
     //ADDD Instruction
-    instructions["ADDD"]["INMEDIATE"] = "C3jjkk";
-    instructions["ADDD"]["DIRECT"] = "D3dd";
-    instructions["ADDD"]["EXTENDED"] = "F3hhll"; 
+    instructions["ADDD"]["INMEDIATE"] = "C3    ";
+    instructions["ADDD"]["DIRECT"] = "D3  ";
+    instructions["ADDD"]["EXTENDED"] = "F3    "; // 
   
     generateTABCOP(file, tbcFile, instructions);
     generateLST(file, tbcFile, lstFile, instructions);
@@ -101,12 +105,12 @@ void generateTABCOP(fstream &asmFile, fstream &tbcFile, const map<string,map<str
 
 void generateLST(fstream &asmFile, fstream &tbcFile, fstream &lstFile, const map<string,map<string,string>> &ins){
     string line,ORG,orgValue,orgSymbol,mnemonic,COP,MD;
-    vector<string> values;
-    int LI,PC;
+    vector<string> values, COPvalues;
+    int LI,PC,i=0;
     smatch match;
     regex orgPattern("^\\s*(ORG)\\s+(\\$|@|%)*([0-9]+)$");
     regex normPattern("^\\s*(\\w+)\\s+(#|$|@)?([0-9]+)\\s*$");
-    regex tbcPattern("^\\s*([a-zA-Z]+)\\s+([a-zA-Z]+)\\s+([a-zA-Z0-9]+)\\s*([0-9]?)$");
+    regex tbcPattern("^\\s*([a-zA-Z]+)\\s+([a-zA-Z]+)\\s+([a-zA-Z0-9]+\\s*)\\s*([0-9]?)$");
     asmFile.open("P5.asm");
     tbcFile.open("P5.TABCOP");
     
@@ -126,7 +130,7 @@ void generateLST(fstream &asmFile, fstream &tbcFile, fstream &lstFile, const map
     }
     asmFile.close();
     PC = stoi(orgValue);
-    lstFile << "PC\t\t" << "COP\t\t" << "Mnemonic" << endl;
+    lstFile << "PC\t\t\t\t" << "COP\t\t" << "\t\t\tMnemonic" << endl;
 
     //Reading .TABCOP for generating .LST
     while(!tbcFile.eof()){
@@ -139,10 +143,29 @@ void generateLST(fstream &asmFile, fstream &tbcFile, fstream &lstFile, const map
             LI = stoi(match[4].str());
             
             if(MD == "INH"){
-                lstFile << PC << "\t" << COP << "\t" << mnemonic << endl;
+                lstFile << PC << "\t\t\t" << COP << "\t\t\t" << mnemonic << endl;
                 PC += LI;
             }
-            
+            else{
+                for(int i=0; i<COP.length(); i++){
+                    if(COP[i] == ' '){
+                        COP.erase(i);
+                    }
+                }
+                string val = values[i];
+                stringstream hexValue;
+                hexValue << hex << stoi(val);
+                string sHexValue = hexValue.str();
+                if(sHexValue.length()%2 != 0){COP.append("0");}
+                cout<<sHexValue<<endl;
+                COP.append(sHexValue);
+
+                lstFile << PC << "\t\t\t" << COP << "\t\t\t\t" << mnemonic << endl;
+                PC += LI;
+                i++;
+            }
+
+
 
         }
     }
