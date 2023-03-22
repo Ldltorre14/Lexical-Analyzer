@@ -14,7 +14,7 @@ using namespace std;
 
 void generateTABCOP(fstream&, fstream&, const map<string,map<string,string>>&);
 void generateLST(fstream&, fstream&, fstream&, const map<string,map<string,string>>&);
-void generateTABSIM(const fstream&, fstream&, const map<string,map<string,string>>&);
+void generateTABSIM(fstream&, fstream&, const map<string,map<string,string>>&);
 
 map<string,map<string,string>> instructions;
 
@@ -40,6 +40,7 @@ int main(){
   
     generateTABCOP(file, tbcFile, instructions);
     generateLST(file, tbcFile, lstFile, instructions);
+    generateTABSIM(file, lstFile,instructions);
     
 
 }
@@ -164,9 +165,38 @@ void generateLST(fstream &asmFile, fstream &tbcFile, fstream &lstFile, const map
                 PC += LI;
                 i++;
             }
+            
 
 
 
         }
     }
+    lstFile.close();
+    tbcFile.close();
+    asmFile.close();
+}
+
+
+void generateTABSIM(fstream &asmFile, fstream &lstFile, const map<string,map<string,string>> &ins){
+    asmFile.open("P5.asm");
+    lstFile.open("P5.LST");
+    fstream tbsFile("P5.TABSIM", ios::out);
+    string line,label,PC;
+    int LI;
+    regex inhPattern("^\\s*(\\w+)\\s*$");
+    regex normPattern("^\\s*(\\w+)\\s+(#|$|@)?([0-9]+)\\s*$");
+    regex labelPattern("^\\s*([0-9a-zA-Z]+)");
+    smatch match;
+    
+    tbsFile << "LABEL\t\t" << endl;
+
+    //Getting the label from the asm file
+    while(!asmFile.eof()){
+        getline(asmFile,line);
+        if(regex_search(line,match,labelPattern)){
+            label = match[1].str();
+        }
+    }
+    tbsFile << label << "=" << "4014" << endl;
+
 }
