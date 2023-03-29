@@ -9,7 +9,12 @@
 
 using namespace std;
 
-
+int getSize(string val){
+    int counter = 0;
+    for(int i=0; i<val.length(); i++)
+        counter++;
+    return counter;
+}
 
 
 void generateTABCOP(fstream&, fstream&, const map<string,map<string,string>>&);
@@ -180,12 +185,30 @@ void generateLST(fstream &asmFile, fstream &tbcFile, fstream &lstFile, map<strin
                 stringstream hexValue;
                 hexValue << hex << stoi(val);
                 string sHexValue = hexValue.str();
-                if(sHexValue.length()%2 != 0){COP.append("0");}
+                string aux = COP;
+
+                if(sHexValue.length()%2 != 0)
+                    COP.append("0");
+                    
                 cout<<sHexValue<<endl;
                 COP.append(sHexValue);
 
-                lstFile << PC << "\t\t\t" << COP << "\t\t\t\t" << mnemonic << endl;
+                if(COP.length() != LI*2){
+                    for(int i=0;i<COP.length();i++){
+                        if(COP[i] == '0' && i>=2){
+                            while(COP.length() != LI*2){
+                                COP.insert(i,"0");
+                            }
+                            break;
+                        }
+                    }
+                }
+                    
+
+                lstFile <<  PC << "\t\t\t" << COP << "\t\t\t\t" << mnemonic << endl;
                 PC += LI;
+                
+                
                 i++;
             }
         }
