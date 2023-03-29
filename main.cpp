@@ -13,10 +13,11 @@ using namespace std;
 
 
 void generateTABCOP(fstream&, fstream&, const map<string,map<string,string>>&);
-void generateLST(fstream&, fstream&, fstream&, const map<string,map<string,string>>&);
-void generateTABSIM(fstream&, fstream&, const map<string,map<string,string>>&);
+void generateLST(fstream&, fstream&, fstream&, map<string,string>&);
+void generateTABSIM(fstream&, fstream&, map<string,string>&);
 
 map<string,map<string,string>> instructions;
+map<string,string> labels;
 
 
 int main(){
@@ -39,8 +40,8 @@ int main(){
     instructions["ADDD"]["EXTENDED"] = "F3    "; // 
   
     generateTABCOP(file, tbcFile, instructions);
-    generateLST(file, tbcFile, lstFile, instructions);
-    generateTABSIM(file, lstFile,instructions);
+    generateLST(file, tbcFile, lstFile, labels);
+    generateTABSIM(file, lstFile,labels);
     
 
 }
@@ -48,16 +49,20 @@ int main(){
 void generateTABCOP(fstream &asmFile, fstream &tbcFile, const map<string,map<string,string>>& ins){
     string line,mnemonic,symbol,value,MD,COP,PC;
     int LI;
-    regex inhPattern("^\\s*(\\w+)\\s*$");
-    regex normPattern("^\\s*(\\w+)\\s+(#|$|@)?([0-9]+)\\s*$");
+    //Problem: The inhPattern regex, detects label and the inherent instructions but also 
+    //if there is a label in the END tag, it counts the END as a mnemonic
+    //I have to find a way for make the END tag an exception and only catch the label
+    regex inhPattern("^\\s*(\\w+:)?\\s*(\\w+)\\s*$"); //^\\s*(\\w+:)?\\s*(\\w+)\\s*$ 
+    regex normPattern("^\\s*(\\w+:)?\\s+(\\w+)\\s+(#|$|@)?([0-9]+)\\s*$");
     smatch match;
     tbcFile << "MN\t\t" << "MD\t\t" << "COP\t\t" << "LI" << endl;
 
     while(!asmFile.eof()){
         getline(asmFile, line);
-
         if(regex_search(line,match,inhPattern)){
-            mnemonic = match[1].str();
+            cout<<"hello!";
+            mnemonic = match[2].str();
+            
             for(auto it : ins){
                 if(mnemonic == it.first){
                     for(auto it2 : it.second){
@@ -68,15 +73,18 @@ void generateTABCOP(fstream &asmFile, fstream &tbcFile, const map<string,map<str
                         }
                     }
                 }
+
             }
-            LI = COP.length() / 2;
-            tbcFile << mnemonic << "\t\t" << MD << "\t\t" << COP << "\t" << LI << endl;
+            if(mnemonic != "END"){
+                 LI = COP.length() / 2;
+                tbcFile << mnemonic << "\t\t" << MD << "\t\t" << COP << "\t" << LI << endl;
+            }
 
         }
         else if(regex_search(line,match,normPattern)){
-            mnemonic = match[1].str();
-            symbol = match[2].str();
-            value = match[3].str();
+            mnemonic = match[2].str();
+            symbol = match[3].str();
+            value = match[4].str();
 
             if(value.length() > 2){
                 MD = "EXT";
@@ -104,13 +112,15 @@ void generateTABCOP(fstream &asmFile, fstream &tbcFile, const map<string,map<str
 
 
 
-void generateLST(fstream &asmFile, fstream &tbcFile, fstream &lstFile, const map<string,map<string,string>> &ins){
+void generateLST(fstream &asmFile, fstream &tbcFile, fstream &lstFile, map<string,string> &labels){
     string line,ORG,orgValue,orgSymbol,mnemonic,COP,MD;
-    vector<string> values, COPvalues;
+    vector<string> values;
     int LI,PC,i=0;
+    int counter = 0;
     smatch match;
+    regex inhPattern("^\\s*(\\w+:)?\\s*(\\w+)\\s*$");
     regex orgPattern("^\\s*(ORG)\\s+(\\$|@|%)*([0-9]+)$");
-    regex normPattern("^\\s*(\\w+)\\s+(#|$|@)?([0-9]+)\\s*$");
+    regex normPattern("^\\s*(\\w+:)?\\s+(\\w+)\\s+(#|$|@)?([0-9]+)\\s*$");
     regex tbcPattern("^\\s*([a-zA-Z]+)\\s+([a-zA-Z]+)\\s+([a-zA-Z0-9]+\\s*)\\s*([0-9]?)$");
     asmFile.open("P5.asm");
     tbcFile.open("P5.TABCOP");
@@ -118,6 +128,7 @@ void generateLST(fstream &asmFile, fstream &tbcFile, fstream &lstFile, const map
     //Getting the PC value
     while(!asmFile.eof()){
         getline(asmFile,line);
+        counter++;
         if(regex_search(line,match,orgPattern)){
             ORG = match[1].str();
             orgSymbol = match[2].str();
@@ -125,9 +136,21 @@ void generateLST(fstream &asmFile, fstream &tbcFile, fstream &lstFile, const map
         }
         //Getting the instruction value operand and storing in a vector
         else if(regex_search(line,match,normPattern)){
-            values.push_back(match[3].str());  
+            values.push_back(match[4].str());
+            //Getting the line number where it is the label
+            string label = match[1].str();
+            if(!label.empty()){
+                labels[match[1].str()] = to_string(counter);
+                cout<<"Label Normal in line:"<<counter<<endl;
+            }   
         }
-        
+        else if(regex_search(line,match,inhPattern)){
+            string label = match[1].str();
+            if(!label.empty()){
+                labels[match[1].str()] = to_string(counter);
+                cout<<"Label Inherent in line:"<<counter<<endl;
+            }
+        }
     }
     asmFile.close();
     PC = stoi(orgValue);
@@ -165,38 +188,46 @@ void generateLST(fstream &asmFile, fstream &tbcFile, fstream &lstFile, const map
                 PC += LI;
                 i++;
             }
-            
-
-
-
         }
     }
+    lstFile << PC;
     lstFile.close();
     tbcFile.close();
     asmFile.close();
 }
 
 
-void generateTABSIM(fstream &asmFile, fstream &lstFile, const map<string,map<string,string>> &ins){
+void generateTABSIM(fstream &asmFile, fstream &lstFile, map<string,string> &labels){
     asmFile.open("P5.asm");
     lstFile.open("P5.LST");
     fstream tbsFile("P5.TABSIM", ios::out);
     string line,label,PC;
     int LI;
-    regex inhPattern("^\\s*(\\w+)\\s*$");
-    regex normPattern("^\\s*(\\w+)\\s+(#|$|@)?([0-9]+)\\s*$");
-    regex labelPattern("^\\s*([0-9a-zA-Z]+)");
+    static int counter=0;
+    regex labelPC_Pattern("^\\s*(\\w+)");
     smatch match;
     
     tbsFile << "LABEL\t\t" << endl;
 
-    //Getting the label from the asm file
-    while(!asmFile.eof()){
-        getline(asmFile,line);
-        if(regex_search(line,match,labelPattern)){
-            label = match[1].str();
+    //Writing the Labels and their correspondent PC
+    for(auto it : labels){
+        while(!lstFile.eof()){
+            getline(lstFile,line);
+            counter++;
+            if(regex_search(line,match,labelPC_Pattern)){
+                if(counter == stoi(it.second)){
+                    cout<<"found"<<endl;
+                    label = it.first;
+                    PC = match[1].str();
+                    tbsFile << label << "=" << PC << endl;
+                    break;
+                }
+            }
         }
     }
-    tbsFile << label << "=" << "4014" << endl;
+
+    /*for(auto it : labels){
+        cout<<it.first<<"in Line" << it.second << endl;
+    }*/
 
 }
